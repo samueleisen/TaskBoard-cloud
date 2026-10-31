@@ -119,7 +119,7 @@ export const CloudStatusDrawer: React.FC<CloudStatusDrawerProps> = ({
           </div>
         </div>
 
-        {/* 3. Autoscaling & Log Retention SRE Guardrails */}
+        {/* 3. Autoscaling, Rate Limit & SRE Guardrails */}
         <div className="sre-metric-card">
           <div className="metric-label">SRE Reliability Guardrails</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginTop: '0.4rem', fontSize: '0.8rem' }}>
@@ -128,6 +128,18 @@ export const CloudStatusDrawer: React.FC<CloudStatusDrawerProps> = ({
                 <Cpu size={13} /> Autoscaling Instances:
               </span>
               <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-main)' }}>0 min / 3 max</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <ShieldAlert size={13} /> SRE Rate Limiting:
+              </span>
+              <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-emerald)' }}>10 req / 30s</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <Database size={13} /> Board Capacity Ceiling:
+              </span>
+              <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-emerald)' }}>Max 5 tasks</strong>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '5px' }}>

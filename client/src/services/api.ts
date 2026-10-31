@@ -4,8 +4,17 @@ const API_BASE = '/api/v1';
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`API error ${res.status}: ${errorText || res.statusText}`);
+    let message = res.statusText;
+    try {
+      const data = await res.json();
+      if (data && data.error) {
+        message = data.error;
+      }
+    } catch {
+      const errorText = await res.text();
+      if (errorText) message = errorText;
+    }
+    throw new Error(message);
   }
   return res.json() as Promise<T>;
 }

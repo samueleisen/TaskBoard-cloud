@@ -110,8 +110,9 @@ export const App: React.FC = () => {
         });
       }
       await refreshBoard();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to save task:', err);
+      alert(err.message || 'Failed to save task');
     }
   };
 
@@ -119,8 +120,9 @@ export const App: React.FC = () => {
     try {
       await api.deleteTask(id);
       await refreshBoard();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to delete task:', err);
+      alert(err.message || 'Failed to delete task');
     }
   };
 
@@ -128,8 +130,9 @@ export const App: React.FC = () => {
     try {
       await api.moveTask(taskId, targetListId, 1000, newStatus);
       await refreshBoard();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to move task:', err);
+      alert(err.message || 'Failed to move task');
     }
   };
 
