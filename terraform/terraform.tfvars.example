@@ -1,0 +1,12 @@
+# ==========================================================
+# TaskBoard Cloud — Terraform Variable Values Template
+# ==========================================================
+
+project_id         = "your-gcp-project-id"
+region             = "us-central1"
+environment        = "prod"
+billing_account_id = "01ABCD-23EFGH-45IJKL"
+alert_email        = "sam@example.com"
+db_password        = "super-secure-postgres-password-1234"
+jwt_secret         = "super-secret-jwt-signing-key-minimum-32-chars-long"
+container_image    = "us-central1-docker.pkg.dev/your-gcp-project-id/taskboard/app:latest"

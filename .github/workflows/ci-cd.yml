@@ -1,0 +1,95 @@
+name: Continuous Integration & Continuous Delivery
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+  REPOSITORY: taskboard
+  SERVICE_NAME: taskboard-prod-app
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Type Check & Test
+        run: |
+          npm run build
+          npm test
+
+  build-and-deploy-staging:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud via WIF
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+
+      - name: Configure Docker Credential Helper
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build & Push Docker Image
+        run: |
+          IMAGE_URI="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/app:${{ github.sha }}"
+          docker build -t $IMAGE_URI .
+          docker push $IMAGE_URI
+
+      - name: Deploy to Cloud Run Staging
+        run: |
+          IMAGE_URI="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/app:${{ github.sha }}"
+          gcloud run deploy taskboard-staging-app \
+            --image $IMAGE_URI \
+            --region ${{ env.REGION }} \
+            --quiet
+
+      - name: Smoke Test Staging Endpoint
+        run: |
+          STAGING_URL=$(gcloud run services describe taskboard-staging-app --region ${{ env.REGION }} --format='value(status.url)')
+          curl --fail --retry 3 --retry-delay 5 "$STAGING_URL/health" || exit 1
+
+  deploy-production:
+    needs: build-and-deploy-staging
+    runs-on: ubuntu-latest
+    environment: production # Manual gatekeeper approval in GitHub
+    steps:
+      - name: Authenticate to Google Cloud via WIF
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+
+      - name: Deploy to Cloud Run Production (Zero Downtime)
+        run: |
+          IMAGE_URI="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/app:${{ github.sha }}"
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image $IMAGE_URI \
+            --region ${{ env.REGION }} \
+            --quiet
+
+      - name: Verify Production Health
+        run: |
+          PROD_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --format='value(status.url)')
+          curl --fail --retry 5 --retry-delay 3 "$PROD_URL/health" || exit 1

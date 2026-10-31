@@ -1,0 +1,47 @@
+name: 1-Command Production Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_revision:
+        description: 'Specific Cloud Run revision name to rollback to (Leave blank to revert to previous revision)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+  SERVICE_NAME: taskboard-prod-app
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Authenticate to Google Cloud via WIF
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+
+      - name: Execute Sub-5-Second Traffic Split Rollback
+        run: |
+          if [ -z "${{ github.event.inputs.target_revision }}" ]; then
+            TARGET_REV=$(gcloud run revisions list --service ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --limit 2 --format 'value(metadata.name)' | tail -n 1)
+          else
+            TARGET_REV="${{ github.event.inputs.target_revision }}"
+          fi
+
+          echo "Initiating instant rollback to healthy revision: $TARGET_REV"
+          gcloud run services update-traffic ${{ env.SERVICE_NAME }} \
+            --to-revisions ${TARGET_REV}=100 \
+            --region ${{ env.REGION }}
+
+          echo "Rollback traffic shifting complete. Validating /health probe..."
+          PROD_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --format='value(status.url)')
+          curl --fail --retry 3 --retry-delay 2 "$PROD_URL/health" || exit 1
+          echo "Production restored and healthy!"

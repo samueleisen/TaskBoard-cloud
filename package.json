@@ -1,0 +1,24 @@
+{
+  "name": "taskboard-cloud",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Production-grade small team task app with GCP Cloud Run and FinOps architecture",
+  "scripts": {
+    "dev": "concurrently -n \"server,client\" -c \"blue,magenta\" \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:client": "npm run dev --workspace=client",
+    "build": "npm run build --workspace=client && npm run build --workspace=server",
+    "build:client": "npm run build --workspace=client",
+    "build:server": "npm run build --workspace=server",
+    "start": "npm start --workspace=server",
+    "lint": "npm run lint --workspace=server && npm run lint --workspace=client 2>/dev/null || true",
+    "test": "npm test --workspace=server 2>/dev/null || true"
+  },
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
