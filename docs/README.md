@@ -60,6 +60,7 @@ This planning suite outlines the complete context, architectural evaluations, da
 | **[06. Infrastructure, FinOps & Cost Model](file:///home/sam/Code/TaskBoard-cloud/docs/06-infrastructure-and-cost-model.md)** | Line-item pricing breakdown to achieve the **$6/mo target**, Terraform HCL modules, 14-day log sinks, and $5/$10/$20 budget alert rules. | DevOps, FinOps, SRE |
 | **[07. CI/CD & Deployment Strategy](file:///home/sam/Code/TaskBoard-cloud/docs/07-cicd-and-deployment-strategy.md)** | GitHub Actions with Workload Identity Federation, staging auto-deploy, prod approval gate, and 1-command rollback runbook. | DevOps & Release Engineers |
 | **[08. Decision Matrix & Recommendation](file:///home/sam/Code/TaskBoard-cloud/docs/08-decision-matrix-and-recommendation.md)** | Multi-criteria evaluation matrix, trade-off analysis, phased implementation roadmap, and portfolio storytelling guide. | Tech Leads, Hiring Managers |
+| **[09. Real-World Client Demands & Cloud Consulting Playbook](file:///home/sam/Code/TaskBoard-cloud/docs/09-real-world-client-cloud-demands.md)** | Breakdown of the 8 archetypal client requests, quote decoders, pricing models ($300–$2,500), and 3 sellable cloud service packs. | Freelancers, Cloud Consultants, Founders |
 
 ---
 

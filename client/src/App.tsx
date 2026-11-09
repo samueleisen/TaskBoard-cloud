@@ -1,331 +1,356 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Filter, Plus, Layout } from 'lucide-react';
-import { Board, HealthStatus, Task, Team, TeamMember, User } from './types';
-import { api } from './services/api';
-import { Navbar } from './components/Navbar';
-import { KanbanBoard } from './components/KanbanBoard';
-import { TaskModal } from './components/TaskModal';
-import { TeamModal } from './components/TeamModal';
-import { CloudStatusDrawer } from './components/CloudStatusDrawer';
+import React, { useState, useEffect, useRef } from 'react';
+import { HealthStatus, api } from './services/api';
 
-export const App: React.FC = () => {
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [activeTeam, setActiveTeam] = useState<Team | null>(null);
-  const [board, setBoard] = useState<Board | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                             */
+/* ------------------------------------------------------------------ */
+function formatUptime(seconds: number): string {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (d > 0) return `${d}d ${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m ${s}s`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Live Metrics Hook                                                   */
+/* ------------------------------------------------------------------ */
+function useLiveHealth() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [latency, setLatency] = useState<number | null>(null);
+  const [error, setError] = useState(false);
 
-  // Filters & Search
-  const [searchQuery, setSearchQuery] = useState('');
-  const [priorityFilter, setPriorityFilter] = useState('all');
-  const [assigneeFilter, setAssigneeFilter] = useState('all');
-
-  // Modals & Drawers
-  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [defaultListId, setDefaultListId] = useState<string | undefined>(undefined);
-  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
-  const [isCloudDrawerOpen, setIsCloudDrawerOpen] = useState(false);
-
-  // 1. Initial Load: Fetch Health, Users, and Teams
-  const loadInitialData = async () => {
+  const probe = async () => {
+    const t0 = performance.now();
     try {
-      // Health probe
-      const healthData = await api.getHealth().catch(() => null);
-      setHealth(healthData);
-
-      // Users
-      const usersData = await api.getUsers().catch(() => []);
-      setUsers(usersData);
-      if (usersData.length > 0) setCurrentUser(usersData[0]);
-
-      // Teams
-      const teamsData = await api.getTeams().catch(() => []);
-      setTeams(teamsData);
-      if (teamsData.length > 0) {
-        setActiveTeam(teamsData[0]);
-      }
-    } catch (err) {
-      console.error('Failed to load initial data:', err);
+      const h = await api.getHealth();
+      setLatency(Math.round(performance.now() - t0));
+      setHealth(h);
+      setError(false);
+    } catch {
+      setLatency(null);
+      setError(true);
     }
   };
 
   useEffect(() => {
-    loadInitialData();
+    probe();
+    const id = setInterval(probe, 30_000);
+    return () => clearInterval(id);
   }, []);
 
-  // 2. Load Board and Members whenever activeTeam changes
+  return { health, latency, error };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Intersection Observer hook for scroll-reveal                       */
+/* ------------------------------------------------------------------ */
+function useReveal() {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [visible, setVisible] = useState(false);
+
   useEffect(() => {
-    if (!activeTeam) return;
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); observer.disconnect(); } },
+      { threshold: 0.12 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
-    const loadTeamData = async () => {
-      try {
-        const [boardsData, membersData] = await Promise.all([
-          api.getTeamBoards(activeTeam.id).catch(() => []),
-          api.getTeamMembers(activeTeam.id).catch(() => []),
-        ]);
+  return { ref, visible };
+}
 
-        setTeamMembers(membersData);
+/* ------------------------------------------------------------------ */
+/*  Architecture steps                                                  */
+/* ------------------------------------------------------------------ */
+const STEPS = [
+  {
+    icon: '💻',
+    label: 'Local Dev',
+    detail: 'TypeScript · React · Express',
+  },
+  {
+    icon: '🐙',
+    label: 'GitHub',
+    detail: 'samueleisen/TaskBoard-cloud',
+    link: 'https://github.com/samueleisen/TaskBoard-cloud',
+  },
+  {
+    icon: '☁️',
+    label: 'GCP VM',
+    detail: 'e2-micro · us-central1-a',
+  },
+  {
+    icon: '⚙️',
+    label: 'PM2',
+    detail: 'Process manager · auto-restart',
+  },
+  {
+    icon: '🔥',
+    label: 'Port 8080',
+    detail: 'Firewall rule · TCP ingress',
+  },
+  {
+    icon: '🌐',
+    label: 'Live',
+    detail: '34.57.62.124:8080',
+  },
+];
 
-        if (boardsData.length > 0) {
-          const fullBoard = await api.getBoard(boardsData[0].id).catch(() => null);
-          setBoard(fullBoard);
-        } else {
-          // Auto create a board for the team if none exist
-          const newBoard = await api.createBoard(activeTeam.id, `${activeTeam.name} Board`);
-          const fullBoard = await api.getBoard(newBoard.id);
-          setBoard(fullBoard);
-        }
-      } catch (err) {
-        console.error('Failed to load team data:', err);
-      }
-    };
+const SPECS = [
+  { label: 'Instance', value: 'e2-micro' },
+  { label: 'vCPUs', value: '1 (shared)' },
+  { label: 'RAM', value: '1 GB' },
+  { label: 'OS', value: 'Ubuntu 24.04 LTS' },
+  { label: 'Disk', value: '10 GB persistent' },
+  { label: 'Region', value: 'us-central1' },
+  { label: 'Runtime', value: 'Node.js 20 LTS' },
+  { label: 'Monthly cost', value: '$0.00 ✓' },
+];
 
-    loadTeamData();
-  }, [activeTeam]);
+/* ------------------------------------------------------------------ */
+/*  Sections                                                            */
+/* ------------------------------------------------------------------ */
 
-  // 3. Refresh Active Board Helper
-  const refreshBoard = async () => {
-    if (!board) return;
-    try {
-      const refreshed = await api.getBoard(board.id);
-      setBoard(refreshed);
-    } catch (err) {
-      console.error('Failed to refresh board:', err);
-    }
-  };
+function Section({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  const { ref, visible } = useReveal();
+  return (
+    <div ref={ref} className={`reveal-section ${visible ? 'is-visible' : ''} ${className}`}>
+      {children}
+    </div>
+  );
+}
 
-  // 4. Task Actions
-  const handleSaveTask = async (taskData: Partial<Task>) => {
-    try {
-      if (taskData.id) {
-        await api.updateTask(taskData.id, taskData);
-      } else {
-        await api.createTask({
-          ...taskData,
-          boardId: board?.id,
-          creatorId: currentUser?.id,
-        });
-      }
-      await refreshBoard();
-    } catch (err: any) {
-      console.error('Failed to save task:', err);
-      alert(err.message || 'Failed to save task');
-    }
-  };
+function LiveStrip({ health, latency, error }: { health: HealthStatus | null; latency: number | null; error: boolean }) {
+  const online = !error && health?.status === 'ok';
+  return (
+    <div className="live-strip">
+      <div className="live-status">
+        <span className={`live-dot ${online ? 'online' : 'offline'}`} />
+        <span className="live-label">{online ? 'Online' : 'Offline'}</span>
+      </div>
+      <div className="live-divider" />
+      <div className="live-metric">
+        <span className="live-metric-key">Latency</span>
+        <span className="live-metric-val">{latency != null ? `${latency} ms` : '—'}</span>
+      </div>
+      <div className="live-divider" />
+      <div className="live-metric">
+        <span className="live-metric-key">Uptime</span>
+        <span className="live-metric-val">{health ? formatUptime(health.uptimeSeconds) : '—'}</span>
+      </div>
+      <div className="live-divider" />
+      <div className="live-metric">
+        <span className="live-metric-key">Instance</span>
+        <span className="live-metric-val">GCP e2-micro · us-central1</span>
+      </div>
+      <div className="live-divider" />
+      <div className="live-metric">
+        <span className="live-metric-key">Cost</span>
+        <span className="live-metric-val live-free">$0.00 / mo</span>
+      </div>
+    </div>
+  );
+}
 
-  const handleDeleteTask = async (id: string) => {
-    try {
-      await api.deleteTask(id);
-      await refreshBoard();
-    } catch (err: any) {
-      console.error('Failed to delete task:', err);
-      alert(err.message || 'Failed to delete task');
-    }
-  };
-
-  const handleMoveTask = async (taskId: string, targetListId: string, newStatus: Task['status']) => {
-    try {
-      await api.moveTask(taskId, targetListId, 1000, newStatus);
-      await refreshBoard();
-    } catch (err: any) {
-      console.error('Failed to move task:', err);
-      alert(err.message || 'Failed to move task');
-    }
-  };
-
-  // 5. Team Actions
-  const handleInviteMember = async (email: string, role: string) => {
-    if (!activeTeam) return;
-    try {
-      await api.inviteTeamMember(activeTeam.id, email, role);
-      const members = await api.getTeamMembers(activeTeam.id);
-      setTeamMembers(members);
-      const allUsers = await api.getUsers();
-      setUsers(allUsers);
-    } catch (err) {
-      console.error('Failed to invite member:', err);
-    }
-  };
-
-  const handleCreateTeam = async (name: string) => {
-    try {
-      const newTeam = await api.createTeam(name);
-      setTeams(prev => [...prev, newTeam]);
-      setActiveTeam(newTeam);
-    } catch (err) {
-      console.error('Failed to create team:', err);
-    }
-  };
-
-  // 6. Filtered Board Presentation
-  const filteredBoard = useMemo(() => {
-    if (!board || !board.lists) return board;
-
-    const filteredLists = board.lists.map((list) => {
-      const tasks = (list.tasks || []).filter((task) => {
-        // Search text filter
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase();
-          const matchTitle = task.title.toLowerCase().includes(q);
-          const matchDesc = task.description?.toLowerCase().includes(q);
-          if (!matchTitle && !matchDesc) return false;
-        }
-        // Priority filter
-        if (priorityFilter !== 'all' && task.priority !== priorityFilter) {
-          return false;
-        }
-        // Assignee filter
-        if (assigneeFilter !== 'all' && task.assigneeId !== assigneeFilter) {
-          return false;
-        }
-        return true;
-      });
-
-      return {
-        ...list,
-        tasks,
-      };
-    });
-
-    return {
-      ...board,
-      lists: filteredLists,
-    };
-  }, [board, searchQuery, priorityFilter, assigneeFilter]);
+/* ------------------------------------------------------------------ */
+/*  Main App                                                            */
+/* ------------------------------------------------------------------ */
+export const App: React.FC = () => {
+  const { health, latency, error } = useLiveHealth();
 
   return (
     <div className="app-container">
-      {/* Top Navigation */}
-      <Navbar
-        teams={teams}
-        activeTeam={activeTeam}
-        onSelectTeam={setActiveTeam}
-        onOpenTeamModal={() => setIsTeamModalOpen(true)}
-        onOpenTaskModal={() => {
-          setEditingTask(null);
-          setDefaultListId(board?.lists?.[0]?.id);
-          setIsTaskModalOpen(true);
-        }}
-        onToggleCloudDrawer={() => setIsCloudDrawerOpen(prev => !prev)}
-        health={health}
-        currentUser={currentUser}
-      />
+      {/* ── Topbar ── */}
+      <header className="topbar">
+        <div className="topbar-brand">
+          <span className="topbar-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" fill="#18181b" />
+              <path d="M8 12 Q12 7 16 12 Q12 17 8 12Z" fill="white" opacity="0.9" />
+            </svg>
+          </span>
+          <span>Cloud Hosted Website</span>
+        </div>
+        <a
+          className="topbar-gh"
+          href="https://github.com/samueleisen"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.341-3.369-1.341-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.111-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.026A9.564 9.564 0 0112 6.844a9.59 9.59 0 012.504.337c1.909-1.295 2.747-1.026 2.747-1.026.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.841-2.337 4.687-4.565 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+          </svg>
+          <span>GitHub</span>
+        </a>
+      </header>
 
-      {/* Board Controls & Filter Bar */}
-      <div className="board-header">
-        <div className="board-title-group">
-          <h1>{board?.name || 'Task Board'}</h1>
-          <div className="board-description">
-            {board?.description || 'Small team task management with GCP cloud architecture & FinOps guardrails'}
+      {/* ── Hero ── */}
+      <section className="hero">
+        <div className="hero-bg-blobs" aria-hidden="true">
+          <div className="blob blob-1" />
+          <div className="blob blob-2" />
+          <div className="blob blob-3" />
+        </div>
+        <div className="hero-content">
+          <div className="hero-eyebrow">
+            <span className="hero-dot" />
+            Running live on Google Cloud Platform
+          </div>
+          <h1 className="hero-title">
+            Cloud Hosted<br />
+            <span className="hero-title-accent">Website</span>
+          </h1>
+          <p className="hero-sub">
+            A real, production-grade web app deployed on GCP's Free Tier —<br />
+            24 / 7 uptime, zero dollars, zero compromise.
+          </p>
+          <div className="hero-cta-row">
+            <a className="btn-primary" href="mailto:syamilhedison@gmail.com">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+              </svg>
+              Get in touch
+            </a>
+            <a
+              className="btn-secondary"
+              href="https://github.com/samueleisen/TaskBoard-cloud"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.341-3.369-1.341-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.111-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.026A9.564 9.564 0 0112 6.844a9.59 9.59 0 012.504.337c1.909-1.295 2.747-1.026 2.747-1.026.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.841-2.337 4.687-4.565 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+              </svg>
+              View source
+            </a>
           </div>
         </div>
+        <div className="hero-scroll-hint" aria-hidden="true">
+          <div className="scroll-line" />
+        </div>
+      </section>
 
-        <div className="board-actions">
-          {/* Search Box */}
-          <div className="search-box">
-            <Search size={15} style={{ color: 'var(--text-dim)' }} />
-            <input
-              type="text"
-              placeholder="Search tasks..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+      {/* ── Live Strip ── */}
+      <LiveStrip health={health} latency={latency} error={error} />
 
-          {/* Priority Filter */}
-          <select
-            className="filter-select"
-            value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value)}
-          >
-            <option value="all">All Priorities</option>
-            <option value="urgent">Urgent</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
+      {/* ── Architecture ── */}
+      <Section>
+        <div className="section-inner">
+          <div className="section-label">How it works</div>
+          <h2 className="section-title">From commit to cloud</h2>
+          <p className="section-sub">The entire deployment pipeline runs on free, openly available infrastructure.</p>
 
-          {/* Assignee Filter */}
-          <select
-            className="filter-select"
-            value={assigneeFilter}
-            onChange={(e) => setAssigneeFilter(e.target.value)}
-          >
-            <option value="all">All Members</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.fullName}
-              </option>
+          <div className="arch-flow">
+            {STEPS.map((step, i) => (
+              <React.Fragment key={step.label}>
+                <div className="arch-node" style={{ animationDelay: `${i * 80}ms` }}>
+                  <div className="arch-icon">{step.icon}</div>
+                  <div className="arch-label">{step.label}</div>
+                  {step.link ? (
+                    <a href={step.link} target="_blank" rel="noopener noreferrer" className="arch-detail arch-detail-link">
+                      {step.detail}
+                    </a>
+                  ) : (
+                    <div className="arch-detail">{step.detail}</div>
+                  )}
+                </div>
+                {i < STEPS.length - 1 && (
+                  <div className="arch-arrow" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 12h14M13 6l6 6-6 6"/>
+                    </svg>
+                  </div>
+                )}
+              </React.Fragment>
             ))}
-          </select>
-
-          <button
-            className="btn-primary"
-            onClick={() => {
-              setEditingTask(null);
-              setDefaultListId(board?.lists?.[0]?.id);
-              setIsTaskModalOpen(true);
-            }}
-          >
-            <Plus size={16} />
-            <span>Add Task</span>
-          </button>
+          </div>
         </div>
-      </div>
+      </Section>
 
-      {/* Main Kanban Board */}
-      <main style={{ flex: 1 }}>
-        <KanbanBoard
-          board={filteredBoard}
-          onEditTask={(task) => {
-            setEditingTask(task);
-            setIsTaskModalOpen(true);
-          }}
-          onDeleteTask={handleDeleteTask}
-          onMoveTask={handleMoveTask}
-          onAddTaskInColumn={(listId) => {
-            setEditingTask(null);
-            setDefaultListId(listId);
-            setIsTaskModalOpen(true);
-          }}
-        />
-      </main>
+      {/* ── Specs ── */}
+      <Section>
+        <div className="section-inner">
+          <div className="section-label">Infrastructure</div>
+          <h2 className="section-title">VM specifications</h2>
+          <p className="section-sub">Running entirely within GCP's Always Free Tier — no billing surprises.</p>
 
-      {/* Task Creation & Edit Modal */}
-      <TaskModal
-        isOpen={isTaskModalOpen}
-        onClose={() => setIsTaskModalOpen(false)}
-        onSave={handleSaveTask}
-        initialTask={editingTask}
-        defaultListId={defaultListId}
-        board={board}
-        users={users}
-      />
+          <div className="specs-grid">
+            {SPECS.map((spec) => (
+              <div className="spec-card" key={spec.label}>
+                <div className="spec-label">{spec.label}</div>
+                <div className={`spec-value ${spec.label === 'Monthly cost' ? 'spec-free' : ''}`}>{spec.value}</div>
+              </div>
+            ))}
+          </div>
 
-      {/* Team Management Modal */}
-      <TeamModal
-        isOpen={isTeamModalOpen}
-        onClose={() => setIsTeamModalOpen(false)}
-        team={activeTeam}
-        members={teamMembers}
-        onInviteMember={handleInviteMember}
-        onCreateTeam={handleCreateTeam}
-      />
+          {/* Live health dump */}
+          {health && (
+            <div className="health-dump">
+              <div className="health-dump-header">
+                <span className="live-dot online" style={{ width: '6px', height: '6px' }} />
+                <span>Live /health response</span>
+                <span className="health-dump-latency">{latency != null ? `${latency}ms` : ''}</span>
+              </div>
+              <pre className="health-dump-json">{JSON.stringify(health, null, 2)}</pre>
+            </div>
+          )}
+        </div>
+      </Section>
 
-      {/* SRE & Cloud Inspector Drawer */}
-      <CloudStatusDrawer
-        isOpen={isCloudDrawerOpen}
-        onClose={() => setIsCloudDrawerOpen(false)}
-        health={health}
-        onRefreshHealth={async () => {
-          const h = await api.getHealth().catch(() => null);
-          setHealth(h);
-        }}
-      />
+      {/* ── Contact ── */}
+      <Section>
+        <div className="section-inner contact-section">
+          <div className="section-label">Contact</div>
+          <h2 className="section-title">Let's build something</h2>
+          <p className="section-sub">
+            Interested in a cloud-deployed web project, or just want to chat about GCP Free Tier setups?
+          </p>
+          <div className="contact-row">
+            <a className="contact-card" href="mailto:syamilhedison@gmail.com">
+              <div className="contact-card-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                  <rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                </svg>
+              </div>
+              <div>
+                <div className="contact-card-label">Email</div>
+                <div className="contact-card-val">syamilhedison@gmail.com</div>
+              </div>
+            </a>
+            <a
+              className="contact-card"
+              href="https://github.com/samueleisen"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <div className="contact-card-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.341-3.369-1.341-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.111-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.026A9.564 9.564 0 0112 6.844a9.59 9.59 0 012.504.337c1.909-1.295 2.747-1.026 2.747-1.026.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.841-2.337 4.687-4.565 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+                </svg>
+              </div>
+              <div>
+                <div className="contact-card-label">GitHub</div>
+                <div className="contact-card-val">samueleisen</div>
+              </div>
+            </a>
+          </div>
+        </div>
+      </Section>
+
+      {/* ── Footer ── */}
+      <footer className="footer">
+        <span>Running on Google Cloud Platform · e2-micro · us-central1 · Free Tier</span>
+        <span className="footer-sep">·</span>
+        <span>Built with TypeScript, React, Express</span>
+      </footer>
     </div>
   );
 };
+
 export default App;
