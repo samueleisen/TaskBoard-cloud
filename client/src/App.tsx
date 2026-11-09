@@ -182,7 +182,7 @@ function LiveStrip({
       <div className="live-divider" />
       <div className="live-metric">
         <span className="live-metric-key">Uptime</span>
-        <span className="live-metric-val">{uptimeSeconds != null ? formatUptime(uptimeSeconds) : '—'}</span>
+        <span className="live-metric-val live-metric-uptime">{uptimeSeconds != null ? formatUptime(uptimeSeconds) : '—'}</span>
       </div>
       <div className="live-divider" />
       <div className="live-metric">
