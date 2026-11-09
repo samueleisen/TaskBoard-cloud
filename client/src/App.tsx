@@ -21,28 +21,52 @@ function formatUptime(seconds: number): string {
 function useLiveHealth() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [latency, setLatency] = useState<number | null>(null);
+  const [uptimeSeconds, setUptimeSeconds] = useState<number | null>(null);
   const [error, setError] = useState(false);
+  const [isPinging, setIsPinging] = useState(false);
+
+  const baseUptimeRef = useRef<number | null>(null);
+  const baseTimestampRef = useRef<number>(Date.now());
 
   const probe = async () => {
+    setIsPinging(true);
     const t0 = performance.now();
     try {
       const h = await api.getHealth();
-      setLatency(Math.round(performance.now() - t0));
+      const roundTrip = Math.round(performance.now() - t0);
+      setLatency(roundTrip);
       setHealth(h);
+      baseUptimeRef.current = h.uptimeSeconds;
+      baseTimestampRef.current = Date.now();
+      setUptimeSeconds(h.uptimeSeconds);
       setError(false);
     } catch {
       setLatency(null);
       setError(true);
+    } finally {
+      setTimeout(() => setIsPinging(false), 300);
     }
   };
 
+  // 1. Probe every 3 seconds for active latency & server sync
   useEffect(() => {
     probe();
-    const id = setInterval(probe, 30_000);
-    return () => clearInterval(id);
+    const probeInterval = setInterval(probe, 3000);
+    return () => clearInterval(probeInterval);
   }, []);
 
-  return { health, latency, error };
+  // 2. Second-by-second ticking counter for real-time uptime display
+  useEffect(() => {
+    const tickInterval = setInterval(() => {
+      if (baseUptimeRef.current !== null) {
+        const elapsedSec = Math.floor((Date.now() - baseTimestampRef.current) / 1000);
+        setUptimeSeconds(baseUptimeRef.current + elapsedSec);
+      }
+    }, 1000);
+    return () => clearInterval(tickInterval);
+  }, []);
+
+  return { health, latency, uptimeSeconds, error, isPinging };
 }
 
 /* ------------------------------------------------------------------ */
@@ -127,23 +151,38 @@ function Section({ children, className = '' }: { children: React.ReactNode; clas
   );
 }
 
-function LiveStrip({ health, latency, error }: { health: HealthStatus | null; latency: number | null; error: boolean }) {
+function LiveStrip({
+  health,
+  latency,
+  uptimeSeconds,
+  error,
+  isPinging,
+}: {
+  health: HealthStatus | null;
+  latency: number | null;
+  uptimeSeconds: number | null;
+  error: boolean;
+  isPinging: boolean;
+}) {
   const online = !error && health?.status === 'ok';
   return (
     <div className="live-strip">
       <div className="live-status">
-        <span className={`live-dot ${online ? 'online' : 'offline'}`} />
+        <span className={`live-dot ${online ? 'online' : 'offline'} ${isPinging ? 'live-pinging' : ''}`} />
         <span className="live-label">{online ? 'Online' : 'Offline'}</span>
       </div>
       <div className="live-divider" />
       <div className="live-metric">
         <span className="live-metric-key">Latency</span>
-        <span className="live-metric-val">{latency != null ? `${latency} ms` : '—'}</span>
+        <span className="live-metric-val">
+          {latency != null ? `${latency} ms` : '—'}
+          <span className={`ping-indicator ${isPinging ? 'active' : ''}`} title="Real-time ping sync" />
+        </span>
       </div>
       <div className="live-divider" />
       <div className="live-metric">
         <span className="live-metric-key">Uptime</span>
-        <span className="live-metric-val">{health ? formatUptime(health.uptimeSeconds) : '—'}</span>
+        <span className="live-metric-val">{uptimeSeconds != null ? formatUptime(uptimeSeconds) : '—'}</span>
       </div>
       <div className="live-divider" />
       <div className="live-metric">
@@ -163,7 +202,7 @@ function LiveStrip({ health, latency, error }: { health: HealthStatus | null; la
 /*  Main App                                                            */
 /* ------------------------------------------------------------------ */
 export const App: React.FC = () => {
-  const { health, latency, error } = useLiveHealth();
+  const { health, latency, uptimeSeconds, error, isPinging } = useLiveHealth();
 
   return (
     <div className="app-container">
@@ -237,7 +276,13 @@ export const App: React.FC = () => {
       </section>
 
       {/* ── Live Strip ── */}
-      <LiveStrip health={health} latency={latency} error={error} />
+      <LiveStrip
+        health={health}
+        latency={latency}
+        uptimeSeconds={uptimeSeconds}
+        error={error}
+        isPinging={isPinging}
+      />
 
       {/* ── Architecture ── */}
       <Section>

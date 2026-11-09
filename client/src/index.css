@@ -375,9 +375,30 @@ body::before {
   background: var(--accent-emerald);
   box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.2);
   animation: pulseGlow 2.5s infinite;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.live-dot.live-pinging {
+  transform: scale(1.4);
+  box-shadow: 0 0 0 5px rgba(22, 163, 74, 0.35);
 }
 .live-dot.offline {
   background: #dc2626;
+}
+
+.ping-indicator {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent-emerald);
+  margin-left: 6px;
+  opacity: 0.15;
+  vertical-align: middle;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.ping-indicator.active {
+  opacity: 1;
+  transform: scale(1.6);
 }
 
 .live-label {
