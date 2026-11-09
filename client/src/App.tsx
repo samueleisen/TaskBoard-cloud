@@ -35,16 +35,10 @@ function useLiveHealth() {
       const h = await api.getHealth();
       const roundTrip = Math.round(performance.now() - t0);
       setLatency(roundTrip);
-
-      // Support ?days= or ?hours= query param to preview higher uptime values locally
-      const params = new URLSearchParams(window.location.search);
-      const devOffset = (Number(params.get('days')) || 0) * 86400 + (Number(params.get('hours')) || 0) * 3600;
-      const effectiveUptime = h.uptimeSeconds + devOffset;
-
-      setHealth({ ...h, uptimeSeconds: effectiveUptime });
-      baseUptimeRef.current = effectiveUptime;
+      setHealth(h);
+      baseUptimeRef.current = h.uptimeSeconds;
       baseTimestampRef.current = Date.now();
-      setUptimeSeconds(effectiveUptime);
+      setUptimeSeconds(h.uptimeSeconds);
       setError(false);
     } catch {
       setLatency(null);
