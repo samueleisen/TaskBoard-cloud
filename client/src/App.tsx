@@ -199,6 +199,117 @@ function LiveStrip({
 }
 
 /* ------------------------------------------------------------------ */
+/*  Hero Field — "Signal Lens"                                          */
+/*  A faint dot grid with a lens that magnifies the grid under the     */
+/*  cursor, plus parallax aurora blobs. Only `transform` is animated   */
+/*  (compositor-only → GPU, 60 FPS). Touch devices get an auto-drift.  */
+/* ------------------------------------------------------------------ */
+function HeroField() {
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const lensRef = useRef<HTMLDivElement | null>(null);
+  const lensGridRef = useRef<HTMLDivElement | null>(null);
+  const blobRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    const lens = lensRef.current;
+    const lensGrid = lensGridRef.current;
+    if (!root || !lens || !lensGrid) return;
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const canHover = window.matchMedia('(hover: hover)').matches;
+    const LENS = 260; // lens diameter (px)
+
+    let w = root.clientWidth;
+    let h = root.clientHeight;
+    const target = { x: w / 2, y: h * 0.42 };
+    const pos = { ...target };
+    let pointerActive = false;
+    let raf = 0;
+    let t0 = performance.now();
+    let visible = true;
+
+    const onResize = () => { w = root.clientWidth; h = root.clientHeight; };
+    const onMove = (e: PointerEvent) => {
+      const r = root.getBoundingClientRect();
+      target.x = e.clientX - r.left;
+      target.y = e.clientY - r.top;
+      pointerActive = true;
+    };
+    const onLeave = () => { pointerActive = false; };
+
+    const tick = (now: number) => {
+      const t = (now - t0) / 1000;
+      if (!pointerActive) {
+        // Ambient Lissajous drift when idle / on touch devices
+        target.x = w / 2 + Math.sin(t * 0.35) * w * 0.28;
+        target.y = h * 0.45 + Math.sin(t * 0.52 + 1.2) * h * 0.18;
+      }
+      // Critically-damped follow (smooth "fluid" lag)
+      pos.x += (target.x - pos.x) * 0.085;
+      pos.y += (target.y - pos.y) * 0.085;
+
+      const lx = pos.x - LENS / 2;
+      const ly = pos.y - LENS / 2;
+      lens.style.transform = `translate3d(${lx}px, ${ly}px, 0)`;
+      // Counter-translate inner grid so dots stay locked to the page grid
+      lensGrid.style.transform = `translate3d(${-lx}px, ${-ly}px, 0)`;
+
+      // Parallax blobs, each at a different depth
+      const nx = pos.x / w - 0.5;
+      const ny = pos.y / h - 0.5;
+      blobRefs.current.forEach((b, i) => {
+        if (!b) return;
+        const depth = [60, -45, 35][i] ?? 30;
+        b.style.transform = `translate3d(${nx * depth}px, ${ny * depth}px, 0)`;
+      });
+
+      if (visible) raf = requestAnimationFrame(tick);
+    };
+
+    // Pause the loop when the hero scrolls out of view (saves battery)
+    const io = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      if (visible && !reduceMotion) { t0 = performance.now() - 1; raf = requestAnimationFrame(tick); }
+      else cancelAnimationFrame(raf);
+    });
+
+    if (!reduceMotion) {
+      io.observe(root);
+      if (canHover) {
+        window.addEventListener('pointermove', onMove, { passive: true });
+        root.addEventListener('pointerleave', onLeave);
+      }
+      window.addEventListener('resize', onResize);
+    } else {
+      tick(performance.now());
+      cancelAnimationFrame(raf);
+    }
+
+    return () => {
+      cancelAnimationFrame(raf);
+      io.disconnect();
+      window.removeEventListener('pointermove', onMove);
+      root.removeEventListener('pointerleave', onLeave);
+      window.removeEventListener('resize', onResize);
+    };
+  }, []);
+
+  return (
+    <div ref={rootRef} className="hero-field" aria-hidden="true">
+      <div className="field-blob-wrap field-blob-1"><div ref={(el) => (blobRefs.current[0] = el)} className="field-blob" /></div>
+      <div className="field-blob-wrap field-blob-2"><div ref={(el) => (blobRefs.current[1] = el)} className="field-blob" /></div>
+      <div className="field-blob-wrap field-blob-3"><div ref={(el) => (blobRefs.current[2] = el)} className="field-blob" /></div>
+      <div className="field-grid" />
+      <div ref={lensRef} className="field-lens">
+        <div ref={lensGridRef} className="field-lens-grid" />
+      </div>
+      <div className="field-fade" />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Main App                                                            */
 /* ------------------------------------------------------------------ */
 export const App: React.FC = () => {
@@ -232,11 +343,7 @@ export const App: React.FC = () => {
 
       {/* ── Hero ── */}
       <section className="hero">
-        <div className="hero-bg-blobs" aria-hidden="true">
-          <div className="blob blob-1" />
-          <div className="blob blob-2" />
-          <div className="blob blob-3" />
-        </div>
+        <HeroField />
         <div className="hero-content">
           <div className="hero-eyebrow">
             <span className="hero-dot" />

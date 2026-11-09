@@ -152,49 +152,95 @@ body::before {
 }
 
 /* Animated blobs */
-.hero-bg-blobs {
+/* ── Hero Field: "Signal Lens" ──
+   Everything here animates via `transform` only → compositor/GPU.
+   Blobs use radial-gradients instead of filter: blur() (much cheaper). */
+.hero-field {
   position: absolute;
   inset: 0;
-  pointer-events: none;
   overflow: hidden;
+  pointer-events: none;
+  contain: strict;
 }
 
-.blob {
+.field-blob-wrap {
   position: absolute;
+  animation: blobDrift 20s ease-in-out infinite alternate;
+  will-change: transform;
+}
+.field-blob {
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
-  filter: blur(80px);
-  animation: blobDrift 18s ease-in-out infinite alternate;
+  will-change: transform;
 }
 
-.blob-1 {
-  width: 520px; height: 520px;
-  background: rgba(226, 232, 248, 0.55);
-  top: -180px; left: -120px;
-  animation-delay: 0s;
-  animation-duration: 20s;
-}
+.field-blob-1 { width: 720px; height: 720px; top: -300px; left: -220px; animation-duration: 22s; }
+.field-blob-1 .field-blob { background: radial-gradient(circle, rgba(199, 210, 254, 0.55) 0%, rgba(199, 210, 254, 0) 65%); }
 
-.blob-2 {
-  width: 400px; height: 400px;
-  background: rgba(242, 237, 226, 0.65);
-  top: 60px; right: -100px;
-  animation-delay: -6s;
-  animation-duration: 16s;
-}
+.field-blob-2 { width: 600px; height: 600px; top: -40px; right: -200px; animation-duration: 17s; animation-delay: -6s; }
+.field-blob-2 .field-blob { background: radial-gradient(circle, rgba(245, 222, 190, 0.6) 0%, rgba(245, 222, 190, 0) 65%); }
 
-.blob-3 {
-  width: 350px; height: 350px;
-  background: rgba(220, 242, 230, 0.4);
-  bottom: -100px; left: 30%;
-  animation-delay: -11s;
-  animation-duration: 22s;
-}
+.field-blob-3 { width: 560px; height: 560px; bottom: -260px; left: 32%; animation-duration: 25s; animation-delay: -11s; }
+.field-blob-3 .field-blob { background: radial-gradient(circle, rgba(167, 243, 208, 0.45) 0%, rgba(167, 243, 208, 0) 65%); }
 
 @keyframes blobDrift {
-  0%   { transform: translate(0, 0) scale(1); }
-  33%  { transform: translate(30px, -20px) scale(1.04); }
-  66%  { transform: translate(-20px, 15px) scale(0.97); }
-  100% { transform: translate(15px, 25px) scale(1.02); }
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  33%  { transform: translate3d(40px, -30px, 0) scale(1.05); }
+  66%  { transform: translate3d(-30px, 20px, 0) scale(0.96); }
+  100% { transform: translate3d(20px, 35px, 0) scale(1.03); }
+}
+
+/* Faint base dot grid */
+.field-grid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(24, 24, 27, 0.10) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 45%, #000 30%, transparent 100%);
+          mask-image: radial-gradient(ellipse 75% 65% at 50% 45%, #000 30%, transparent 100%);
+}
+
+/* The lens: a circle that follows the cursor, revealing a bolder,
+   tinted copy of the grid. Its inner grid counter-translates so the
+   dots stay perfectly aligned with the base grid. */
+.field-lens {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  overflow: hidden;
+  will-change: transform;
+  -webkit-mask-image: radial-gradient(circle, #000 0%, rgba(0, 0, 0, 0.6) 45%, transparent 70%);
+          mask-image: radial-gradient(circle, #000 0%, rgba(0, 0, 0, 0.6) 45%, transparent 70%);
+}
+.field-lens-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 150vh;
+  will-change: transform;
+  background-image:
+    radial-gradient(circle, rgba(79, 70, 229, 0.85) 1.6px, transparent 2px),
+    radial-gradient(circle at 50% 50%, rgba(2, 132, 199, 0.06), transparent 70%);
+  background-size: 22px 22px, 100% 100%;
+}
+
+/* Soft fade into the live strip below */
+.field-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 140px;
+  background: linear-gradient(to bottom, rgba(251, 250, 248, 0), var(--bg-app));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field-blob-wrap { animation: none; }
 }
 
 .hero-content {
