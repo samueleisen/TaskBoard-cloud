@@ -35,10 +35,7 @@ async function main() {
     app.use(express.static(clientDistPath));
 
     // SPA fallback
-    app.get('*', (req: Request, res: Response) => {
-      if (req.path.startsWith('/api/')) {
-        return res.status(404).json({ error: 'Route not found' });
-      }
+    app.get('*', (_req: Request, res: Response) => {
       return res.sendFile(path.join(clientDistPath, 'index.html'));
     });
   } else {

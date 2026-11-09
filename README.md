@@ -53,22 +53,22 @@
 |---|---|
 | **Cloud Provider** | Google Cloud Platform (GCP) |
 | **Instance Type** | `e2-micro` (1 shared vCPU, 1 GB RAM) |
-| **Region / Zone** | `us-central1-a` (Always Free Tier eligible region) |
+| **Region / Zone** | `us-central1-a` (Iowa) |
 | **Operating System** | Ubuntu 24.04 LTS (x86_64) |
-| **Persistent Disk** | 10 GB Standard Persistent Disk (within 30 GB free limit) |
+| **Persistent Disk** | 10 GB Standard Persistent Disk |
 | **Process Manager** | PM2 (`taskboard` service with systemd auto-recovery) |
 | **Swap Space** | 1 GB swapfile (`swappiness=10`) for memory stability |
 | **Monthly Bill** | **$0.00 / month** |
 
 ---
 
-## 💸 Cost Breakdown & Free Tier Governance
+## 💸 Cost Optimization & Resource Governance
 
-This setup operates entirely within the **GCP Always Free Tier**:
-* **1 non-preemptible `e2-micro` VM instance** per month in US regions (`us-central1`, `us-west1`, or `us-east1`).
-* **30 GB-months** standard persistent disk.
-* **1 GB network egress** per month to worldwide destinations.
-* **$0.00 total monthly cost** with continuous 24/7 uptime.
+This setup is architected for **$0.00 / month total running cost**:
+* **Optimized `e2-micro` VM instance** running 24/7 in `us-central1`.
+* **10 GB** standard persistent disk footprint.
+* **Lean bandwidth tuning** to keep egress under control.
+* **$0.00 total monthly bill** with continuous 24/7 uptime.
 
 ---
 

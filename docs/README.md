@@ -1,94 +1,178 @@
-# TaskBoard Cloud — Architecture & Implementation Planning Suite
+# Cloud Hosted Website — Architecture & Operations Playbook
 
-> **A production-grade, cost-governed small team task tracker deployed on Google Cloud Platform (GCP).**
-> Engineered for real-world SRE, DevOps excellence, and a strict **~$6/month budget ceiling**.
-
----
-
-## 📌 Executive Summary
-
-**TaskBoard Cloud** is a multi-tenant task management web application designed for small teams (5–20 users), featuring real-time task tracking, role-based team management, and automated email reminders. While the application provides a sleek, modern user experience, its primary engineering purpose is to demonstrate **production-grade cloud engineering, site reliability engineering (SRE) principles, and disciplined FinOps**.
-
-This planning suite outlines the complete context, architectural evaluations, database schemas, API contracts, infrastructure as code (Terraform), CI/CD workflows, cost modeling, and operational runbooks for two distinct deployment options.
-
-```
-                      TASKBOARD CLOUD HIGH-LEVEL ARCHITECTURE
-                      
-  [ User Browser ]
-         │
-         ▼ (HTTPS / Custom Domain)
-┌────────────────────────────────────────────────────────────────────────┐
-│ Google Cloud Platform                                                  │
-│                                                                        │
-│   ┌──────────────────────────────────────────────────────────────┐     │
-│   │ Google Cloud Run (Containerized Service)                     │     │
-│   │  • Auto-scale: 0 to 3 instances (Scale-to-Zero on idle)       │     │
-│   │  • Concurrency: 80 requests/container                        │     │
-│   │  • CPU: 1 vCPU, RAM: 512MiB (Allocated on request)           │     │
-│   └──────────────────────────────┬───────────────────────────────┘     │
-│                                  │                                     │
-│         ┌────────────────────────┼────────────────────────┐            │
-│         ▼                        ▼                        ▼            │
-│  ┌──────────────┐       ┌─────────────────┐      ┌─────────────────┐   │
-│  │ Cloud SQL    │       │ Secret Manager  │      │ Cloud Logging   │   │
-│  │ (PostgreSQL  │       │ (DB Passwords,  │      │ (14-day sink,   │   │
-│  │  db-f1-micro)│       │  JWT Secrets,   │      │  cost-excluded  │   │
-│  │  PITR Backups│       │  API Keys)      │      │  health logs)   │   │
-│  └──────────────┘       └─────────────────┘      └─────────────────┘   │
-│                                  ▲                                     │
-│  ┌───────────────────────────────┴──────────────────────────────┐      │
-│  │ Cloud Scheduler + Cloud Tasks (Cron & Email Reminders)       │      │
-│  └──────────────────────────────────────────────────────────────┘      │
-│                                                                        │
-│  ┌──────────────────────────────────────────────────────────────┐      │
-│  │ Cloud Billing Budgets ($5, $10, $20) + Cloud Monitoring      │      │
-│  └──────────────────────────────────────────────────────────────┘      │
-└────────────────────────────────────────────────────────────────────────┘
-```
+> **A production-grade, 24/7 web application running on Google Cloud Platform at $0.00 / month.**  
+> Engineered to demonstrate resilient cloud hosting, SRE telemetry, and FinOps discipline.
 
 ---
 
-## 🗂️ Documentation Suite Structure
+## 🧭 System Overview
 
-| Document | Purpose | Key Audience |
+**Cloud Hosted Website** is a single-page showcase application that couples a responsive React frontend with an Express backend running under PM2 on a Google Cloud Platform Compute Engine instance.
+
+Instead of paying for managed databases, application load balancers, or over-provisioned container clusters, this project proves that a well-architected web service can run continuously with high availability, low latency, and zero monthly cloud expenditure.
+
+---
+
+## 🏛️ Architecture & Traffic Flow
+
+```
+                      END-TO-END DEPLOYMENT & RUNTIME FLOW
+
+   [ Local Dev ] ─── git push ───▶ [ GitHub ]
+                                        │
+                                    git pull
+                                        ▼
+   ┌────────────────────────────────────────────────────────┐
+   │ Google Cloud Platform (GCP)                            │
+   │ Compute Engine VM: e2-micro (us-central1-a)            │
+   │                                                        │
+   │  ┌──────────────────────────────────────────────────┐  │
+   │  │ PM2 Process Manager (`taskboard` service)        │  │
+   │  │  • Express Web Server (:8080)                    │  │
+   │  │  • Serves pre-compiled React 18 SPA              │  │
+   │  │  • Real-time /health probe endpoint              │  │
+   │  │  • Systemd automatic crash/reboot recovery       │  │
+   │  └──────────────────────────────────────────────────┘  │
+   │                                                        │
+   │  GCP Firewall: allow-port-8080 (TCP Ingress)           │
+   │  1 GB Swap Space (swappiness=10)                       │
+   └────────────────────────┬───────────────────────────────┘
+                            │
+                            ▼
+             [ Visitor Browser: 34.57.62.124:8080 ]
+```
+
+### Key Request Paths:
+1. `GET /` — Serves the pre-compiled React single-page application (`client/dist/index.html`).
+2. `GET /assets/*` — High-speed static bundle delivery directly by Express.
+3. `GET /health` — Real-time telemetry probe returning JSON status, process uptime, and node metadata.
+4. `GET *` (Fallback) — Client-side SPA routing fallback to `client/dist/index.html`.
+
+---
+
+## 💻 Infrastructure & Hardware Specifications
+
+| Component | Specification | Cost & Efficiency |
 | :--- | :--- | :--- |
-| **[01. Gathered Context & Problem Statement](file:///home/sam/Code/TaskBoard-cloud/docs/01-gathered-context.md)** | Analysis of dump notes, business/technical requirements, non-functional constraints, and the "$40 database mistake" post-mortem. | All Stakeholders, SRE, Tech Leads |
-| **[02. Architecture Options Overview](file:///home/sam/Code/TaskBoard-cloud/docs/02-architecture-options-overview.md)** | Side-by-side comparison between Option 1 (Decoupled Multi-Service) and Option 2 (Lean Unified Container). | Architects, Engineers |
-| **[03. Full Plan Option 1: Classic Decoupled](file:///home/sam/Code/TaskBoard-cloud/docs/03-plan-option-1-classic-decoupled.md)** | Deep blueprint: React SPA on Cloud CDN/Storage + Node.js API on Cloud Run + Cloud SQL + Cloud Tasks + Terraform. | Cloud/Backend/Frontend Engineers |
-| **[04. Full Plan Option 2: Ultra-Lean Unified Monolith](file:///home/sam/Code/TaskBoard-cloud/docs/04-plan-option-2-lean-unified-monolith.md)** | Deep blueprint: Single container Fastify/React on Cloud Run + Zero-ALB Ingress + Micro/Serverless Postgres + Cloud Scheduler. | Full-stack Engineers, Solo Devs |
-| **[05. Data Model & API Specification](file:///home/sam/Code/TaskBoard-cloud/docs/05-data-model-and-api-spec.md)** | PostgreSQL DDL schema with indexes, RBAC, task state machine, and OpenAPI REST API contracts. | Backend & Database Developers |
-| **[06. Infrastructure, FinOps & Cost Model](file:///home/sam/Code/TaskBoard-cloud/docs/06-infrastructure-and-cost-model.md)** | Line-item pricing breakdown to achieve the **$6/mo target**, Terraform HCL modules, 14-day log sinks, and $5/$10/$20 budget alert rules. | DevOps, FinOps, SRE |
-| **[07. CI/CD & Deployment Strategy](file:///home/sam/Code/TaskBoard-cloud/docs/07-cicd-and-deployment-strategy.md)** | GitHub Actions with Workload Identity Federation, staging auto-deploy, prod approval gate, and 1-command rollback runbook. | DevOps & Release Engineers |
-| **[08. Decision Matrix & Recommendation](file:///home/sam/Code/TaskBoard-cloud/docs/08-decision-matrix-and-recommendation.md)** | Multi-criteria evaluation matrix, trade-off analysis, phased implementation roadmap, and portfolio storytelling guide. | Tech Leads, Hiring Managers |
-| **[09. Real-World Client Demands & Cloud Consulting Playbook](file:///home/sam/Code/TaskBoard-cloud/docs/09-real-world-client-cloud-demands.md)** | Breakdown of the 8 archetypal client requests, quote decoders, pricing models ($300–$2,500), and 3 sellable cloud service packs. | Freelancers, Cloud Consultants, Founders |
+| **Cloud Provider** | Google Cloud Platform (GCP) | $0.00/mo optimized footprint |
+| **Compute Instance** | `e2-micro` (1 shared vCPU, 1 GB RAM) | Lean shared compute core |
+| **Region / Zone** | `us-central1-a` (Iowa) | US Central zone |
+| **Operating System** | Ubuntu 24.04 LTS (x86_64) | Standard free open-source OS |
+| **Storage** | 10 GB Standard Persistent Disk | Compact storage footprint |
+| **Swapfile** | 1 GB swapfile (`/swapfile`, `swappiness=10`) | Local disk allocated, guards against OOM |
+| **Process Manager** | PM2 (`taskboard`) | Systemd daemonized auto-restart |
+| **Ingress Firewall** | VPC firewall rule: `allow-port-8080` (TCP `0.0.0.0/0`) | Direct VPC ingress |
+| **Monthly Cost** | **$0.00 / month** | $0.00 total monthly bill |
 
 ---
 
-## 🎯 Core Engineering Tenets
+## 📊 SRE Telemetry & Health Probe Contract
 
-1. **Disciplined FinOps ($6/Month Budget Target)**:
-   - A common pitfall in GCP is accidental overspending (e.g. unmanaged Load Balancer forwarding rules at ~$18/mo, or standard multi-core Cloud SQL at ~$50+/mo).
-   - TaskBoard enforces architectural decisions specifically designed to keep monthly run rates under **$6.00**, guarded by automated budget alerts at **$5, $10, and $20**.
-2. **Production-Ready SRE Standards**:
-   - Zero-secret-in-git policy with GCP Secret Manager.
-   - Autoscaling hard-capped at **3 instances** with scale-to-zero capability.
-   - Log retention capped at **14 days** with health-probe exclusions to prevent silent log storage fees.
-   - Daily automated database backups with verified restore procedures.
-3. **One-Command Fast Rollbacks**:
-   - Fully automated staging deployments on every push.
-   - Manual gatekeeper approval for production.
-   - Production revision traffic shifting allows rolling back a failed release in **under 5 seconds** with a single command.
-4. **Keyless Cloud Authentication**:
-   - Zero long-lived service account JSON keys stored in GitHub Secrets.
-   - All deployments utilize Google Cloud **Workload Identity Federation (OIDC)**.
+The application implements a lightweight, zero-dependency health and monitoring endpoint at `/health`:
+
+### HTTP GET `/health`
+```json
+{
+  "status": "ok",
+  "service": "cloud-hosted-website",
+  "mode": "GCP Compute Engine (e2-micro · us-central1)",
+  "isPostgres": false,
+  "uptimeSeconds": 798740,
+  "timestamp": "2026-11-09T09:00:30.576Z",
+  "version": "1.0.0"
+}
+```
+
+### Client-Side Probe Integration:
+* **Active Latency Ping**: The client initiates an active round-trip ping every 3 seconds to measure real-time latency and sync uptime.
+* **Ticking Counter**: A local interval ticks second-by-second to display live, uninterrupted uptime in the sticky metric strip.
+* **Layout Shift Prevention**: Strict tabular numeric styling (`font-variant-numeric: tabular-nums`) prevents layout jitter during metric updates.
 
 ---
 
-## 🚀 Quick Navigation
+## 🛠️ Local Development & Build Workflow
 
-To review the detailed plans, proceed in the recommended sequence:
-1. Review the baseline constraints and incident lessons in **[01-gathered-context.md](file:///home/sam/Code/TaskBoard-cloud/docs/01-gathered-context.md)**.
-2. Compare the two competing architectures in **[02-architecture-options-overview.md](file:///home/sam/Code/TaskBoard-cloud/docs/02-architecture-options-overview.md)**.
-3. Explore the detailed technical blueprints in **[03-plan-option-1-classic-decoupled.md](file:///home/sam/Code/TaskBoard-cloud/docs/03-plan-option-1-classic-decoupled.md)** and **[04-plan-option-2-lean-unified-monolith.md](file:///home/sam/Code/TaskBoard-cloud/docs/04-plan-option-2-lean-unified-monolith.md)**.
-4. Check data schemas and infrastructure configs in **[05-data-model-and-api-spec.md](file:///home/sam/Code/TaskBoard-cloud/docs/05-data-model-and-api-spec.md)** and **[06-infrastructure-and-cost-model.md](file:///home/sam/Code/TaskBoard-cloud/docs/06-infrastructure-and-cost-model.md)**.
-5. See CI/CD deployment mechanics in **[07-cicd-and-deployment-strategy.md](file:///home/sam/Code/TaskBoard-cloud/docs/07-cicd-and-deployment-strategy.md)** and final verdict in **[08-decision-matrix-and-recommendation.md](file:///home/sam/Code/TaskBoard-cloud/docs/08-decision-matrix-and-recommendation.md)**.
+The repository is structured as a clean npm workspace with decoupled client and server packages:
+
+```
+TaskBoard-cloud/
+├── client/           # React 18 + Vite + TypeScript frontend
+│   ├── src/
+│   │   ├── App.tsx          # Single-page showcase component
+│   │   ├── index.css        # Vanilla design tokens & animations
+│   │   ├── main.tsx         # Application entry point
+│   │   └── services/api.ts  # Telemetry client & HealthStatus contract
+│   └── vite.config.ts       # Dev server port 5173 + API proxy
+├── server/           # Express 4 + TypeScript backend
+│   ├── src/
+│   │   ├── config.ts        # Environment configuration
+│   │   └── index.ts         # Server, health probe, static asset delivery
+│   └── tsconfig.json
+├── docs/             # Architecture and operations documentation
+│   └── README.md
+├── .env.example      # Environment variable template
+├── package.json      # Workspace root configuration
+└── README.md         # Public project readme
+```
+
+### Development Commands
+
+```bash
+# 1. Install all dependencies across workspaces
+npm install
+
+# 2. Run local development servers (Vite :5173 + Express :8080)
+npm run dev
+
+# 3. Production build (compiles client assets and server TypeScript)
+npm run build
+
+# 4. Start production server
+npm start
+```
+
+---
+
+## 🚀 VM Setup & Operations Runbook
+
+### 1. Provisioning Swap Space (OOM Prevention)
+On a 1 GB RAM `e2-micro` instance, Node.js builds or memory spikes can trigger the Linux Out-Of-Memory (OOM) killer. Allocating a 1 GB swapfile ensures rock-solid stability:
+
+```bash
+sudo fallocate -l 1G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+echo 'vm.swappiness=10' | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+```
+
+### 2. PM2 Management Commands
+The server runs continuously under PM2 with systemd startup hooks:
+
+```bash
+# Check status and resource usage
+pm2 status
+
+# View live streaming application logs
+pm2 logs taskboard
+
+# Restart application
+pm2 restart taskboard
+
+# Reload application with zero downtime
+pm2 reload taskboard
+
+# Save current PM2 process list to systemd startup
+pm2 save
+```
+
+### 3. Deploying Code Updates on the VM
+```bash
+cd ~/TaskBoard-cloud
+git pull origin main
+npm install
+npm run build
+pm2 restart taskboard
+```

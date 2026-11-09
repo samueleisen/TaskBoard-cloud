@@ -247,7 +247,7 @@ export const App: React.FC = () => {
             <span className="hero-title-accent">Website</span>
           </h1>
           <p className="hero-sub">
-            A real, production-grade web app deployed on GCP's Free Tier —<br />
+            A real, production-grade web app deployed on GCP —<br />
             24 / 7 uptime, zero dollars, zero compromise.
           </p>
           <div className="hero-cta-row">
@@ -323,7 +323,7 @@ export const App: React.FC = () => {
         <div className="section-inner">
           <div className="section-label">Infrastructure</div>
           <h2 className="section-title">VM specifications</h2>
-          <p className="section-sub">Running entirely within GCP's Always Free Tier — no billing surprises.</p>
+          <p className="section-sub">Engineered for 24/7 reliability with zero wasted infrastructure cost.</p>
 
           <div className="specs-grid">
             {SPECS.map((spec) => (
@@ -354,7 +354,7 @@ export const App: React.FC = () => {
           <div className="section-label">Contact</div>
           <h2 className="section-title">Let's build something</h2>
           <p className="section-sub">
-            Interested in a cloud-deployed web project, or just want to chat about GCP Free Tier setups?
+            Interested in a cloud-deployed web project, or looking to optimize your cloud hosting costs?
           </p>
           <div className="contact-row">
             <a className="contact-card" href="mailto:syamilhedison@gmail.com">
@@ -390,7 +390,7 @@ export const App: React.FC = () => {
 
       {/* ── Footer ── */}
       <footer className="footer">
-        <span>Running on Google Cloud Platform · e2-micro · us-central1 · Free Tier</span>
+        <span>Running on Google Cloud Platform · e2-micro · us-central1 · $0.00 Running Cost</span>
         <span className="footer-sep">·</span>
         <span>Built with TypeScript, React, Express</span>
       </footer>
