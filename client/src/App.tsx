@@ -102,8 +102,8 @@ const STEPS = [
   {
     icon: '🐙',
     label: 'GitHub',
-    detail: 'samueleisen/TaskBoard-cloud',
-    link: 'https://github.com/samueleisen/TaskBoard-cloud',
+    detail: 'syamilhi/TaskBoard-cloud',
+    link: 'https://github.com/syamilhi/TaskBoard-cloud',
   },
   {
     icon: '☁️',
@@ -116,14 +116,15 @@ const STEPS = [
     detail: 'Process manager · auto-restart',
   },
   {
-    icon: '🔥',
-    label: 'Port 8080',
-    detail: 'Firewall rule · TCP ingress',
+    icon: '🔒',
+    label: 'Caddy TLS',
+    detail: 'Auto HTTPS · Reverse Proxy',
   },
   {
     icon: '🌐',
     label: 'Live',
-    detail: '34.57.62.124:8080',
+    detail: 'cloud.syamilhi.dev',
+    link: 'https://cloud.syamilhi.dev',
   },
 ];
 
@@ -330,7 +331,7 @@ export const App: React.FC = () => {
         </div>
         <a
           className="topbar-gh"
-          href="https://github.com/samueleisen"
+          href="https://github.com/syamilhi"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -365,7 +366,7 @@ export const App: React.FC = () => {
             </a>
             <a
               className="btn-secondary"
-              href="https://github.com/samueleisen/TaskBoard-cloud"
+              href="https://github.com/syamilhi/TaskBoard-cloud"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -476,7 +477,7 @@ export const App: React.FC = () => {
             </a>
             <a
               className="contact-card"
-              href="https://github.com/samueleisen"
+              href="https://github.com/syamilhi"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -487,7 +488,25 @@ export const App: React.FC = () => {
               </div>
               <div>
                 <div className="contact-card-label">GitHub</div>
-                <div className="contact-card-val">samueleisen</div>
+                <div className="contact-card-val">syamilhi</div>
+              </div>
+            </a>
+            <a
+              className="contact-card"
+              href="https://syamilhi.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <div className="contact-card-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="2" y1="12" x2="22" y2="12"/>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
+              </div>
+              <div>
+                <div className="contact-card-label">Website</div>
+                <div className="contact-card-val">syamilhi.dev</div>
               </div>
             </a>
           </div>
@@ -496,9 +515,11 @@ export const App: React.FC = () => {
 
       {/* ── Footer ── */}
       <footer className="footer">
-        <span>Running on Google Cloud Platform · e2-micro · us-central1 · $0.00 Running Cost</span>
+        <span>CloudZero · Built by Syamil Hadyan</span>
         <span className="footer-sep">·</span>
-        <span>Built with TypeScript, React, Express</span>
+        <span>Running on Google Cloud Platform · e2-micro · us-central1</span>
+        <span className="footer-sep">·</span>
+        <a href="https://syamilhi.dev" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: '3px' }}>syamilhi.dev</a>
       </footer>
     </div>
   );

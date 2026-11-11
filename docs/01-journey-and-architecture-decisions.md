@@ -28,8 +28,8 @@ Task boards are common portfolio projects. What is rare and valuable is proving 
 ### The Decision
 We chose to **fully immerse the project in its cloud identity**:
 * Completely removed the task board UI, kanban columns, modals, task cards, and mock database queries.
-* Replaced it with a single, laser-focused **Cloud Hosted Website** showcase.
-* The web page now communicates one clear message: **"This website is running live on Google Cloud Platform 24/7 at $0.00 / month."**
+* Replaced it with a single, laser-focused **CloudZero** showcase.
+* The web page now communicates one clear message: **"A real, production-grade web app running 24/7 on GCP — optimized to zero waste."**
 
 ---
 
@@ -97,3 +97,4 @@ When designing the animated hero background, we evaluated full WebGL fluid physi
   * Replaced expensive `filter: blur(80px)` with zero-cost soft radial gradient masks.
   * Uses `IntersectionObserver` to automatically pause the animation loop whenever the user scrolls past the hero, conserving client battery.
   * **Bundle impact**: Under **0.6 KB** (gzipped). 60 FPS guaranteed on all devices.
+

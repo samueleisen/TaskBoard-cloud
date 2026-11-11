@@ -19,7 +19,7 @@ async function main() {
   app.get('/health', (_req: Request, res: Response) => {
     return res.status(200).json({
       status: 'ok',
-      service: 'cloud-hosted-website',
+      service: 'cloudzero',
       mode: 'GCP Compute Engine (e2-micro · us-central1)',
       isPostgres: false,
       uptimeSeconds: Math.floor(process.uptime()),
@@ -43,10 +43,10 @@ async function main() {
       res.send(`
         <!DOCTYPE html>
         <html>
-          <head><title>Cloud Hosted Website — API</title></head>
+          <head><title>CloudZero — API</title></head>
           <body style="font-family: system-ui, -apple-system, sans-serif; background: #fbfaf8; color: #18181b; padding: 48px; line-height: 1.6; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #18181b; font-size: 1.5rem; font-weight: 700; margin-bottom: 8px;">Cloud Hosted Website</h1>
-            <p style="color: #646360; margin-bottom: 24px;">Deployed live on Google Cloud Platform (e2-micro · us-central1)</p>
+            <h1 style="color: #18181b; font-size: 1.5rem; font-weight: 700; margin-bottom: 8px;">CloudZero</h1>
+            <p style="color: #646360; margin-bottom: 24px;">Deployed live on Google Cloud Platform (e2-micro · us-central1) · cloud.syamilhi.dev</p>
             <div style="background: #ffffff; border: 1px solid #eae7e1; border-radius: 10px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
               <p style="margin: 0 0 10px 0;"><strong>Status:</strong> Active</p>
               <p style="margin: 0 0 16px 0;"><strong>Health Check:</strong> <a href="/health" style="color: #16a34a; font-family: monospace;">/health</a></p>
@@ -61,7 +61,7 @@ async function main() {
   // 3. Start Server
   const server = app.listen(config.port, '0.0.0.0', () => {
     console.log(`====================================================`);
-    console.log(`🚀 Cloud Hosted Website server running on http://0.0.0.0:${config.port}`);
+    console.log(`🚀 CloudZero server running on http://0.0.0.0:${config.port}`);
     console.log(`🏥 Health Probe: http://localhost:${config.port}/health`);
     console.log(`====================================================`);
   });

@@ -98,8 +98,8 @@ sudo npm install -g pm2
 ```bash
 # 1. Clone your GitHub repository into the home directory
 cd ~
-git clone https://github.com/samueleisen/TaskBoard-cloud.git
-cd TaskBoard-cloud
+git clone https://github.com/syamilhi/TaskBoard-cloud.git CloudZero
+cd CloudZero
 
 # 2. Copy environment template
 cp .env.example .env
@@ -111,7 +111,7 @@ npm install
 npm run build
 
 # 5. Start the backend with PM2
-pm2 start server/dist/index.js --name taskboard
+pm2 start server/dist/index.js --name cloudzero
 
 # 6. Configure PM2 to auto-start on VM reboot / systemd
 pm2 startup systemd
@@ -129,16 +129,16 @@ pm2 save
 Whenever you push new code to the `main` branch on GitHub, run this single block of commands inside the VM:
 
 ```bash
-cd ~/TaskBoard-cloud
+cd ~/CloudZero
 git pull origin main
 npm install
 npm run build
-pm2 restart taskboard
+pm2 restart cloudzero
 ```
 
 ### One-Liner Quick Deploy:
 ```bash
-cd ~/TaskBoard-cloud && git pull && npm install && npm run build && pm2 restart taskboard
+cd ~/CloudZero && git pull && npm install && npm run build && pm2 restart cloudzero
 ```
 
 ---
@@ -155,7 +155,7 @@ Expected output:
 ```json
 {
   "status": "ok",
-  "service": "cloud-hosted-website",
+  "service": "cloudzero",
   "mode": "GCP Compute Engine (e2-micro · us-central1)",
   "isPostgres": false,
   "uptimeSeconds": 14205,
@@ -170,16 +170,16 @@ Expected output:
 pm2 status
 
 # Real-time streaming logs (Ctrl+C to exit)
-pm2 logs taskboard
+pm2 logs cloudzero
 
 # Stream only the last 50 lines of logs
-pm2 logs taskboard --lines 50
+pm2 logs cloudzero --lines 50
 
 # Restart application
-pm2 restart taskboard
+pm2 restart cloudzero
 
 # Zero-downtime reload
-pm2 reload taskboard
+pm2 reload cloudzero
 ```
 
 ---
@@ -188,9 +188,10 @@ pm2 reload taskboard
 
 | Problem | Diagnosis Command | Fix |
 | :--- | :--- | :--- |
-| **Site not responding on public IP** | `curl -I http://34.57.62.124:8080` | Check GCP firewall rule `allow-port-8080` on VPC network. |
-| **Process crashed / restarting** | `pm2 logs taskboard --err` | Check application stack trace for missing files or runtime exceptions. |
-| **RAM usage high (>80%)** | `free -h` and `pm2 status` | Verify swap is enabled (`swapon --show`). Restart PM2 with `pm2 restart taskboard`. |
+| **Site not responding on domain** | `curl -I https://cloud.syamilhi.dev` | Check Caddy service: `sudo systemctl status caddy` and GCP firewall rules. |
+| **Process crashed / restarting** | `pm2 logs cloudzero --err` | Check application stack trace for missing files or runtime exceptions. |
+| **RAM usage high (>80%)** | `free -h` and `pm2 status` | Verify swap is enabled (`swapon --show`). Restart PM2 with `pm2 restart cloudzero`. |
 | **Port 8080 already in use** | `sudo lsof -i :8080` | Kill orphan Node processes using `kill -9 <PID>`. |
 | **Build fails with code 137 (OOM)** | `dmesg -T \| grep -i oom` | Indicates Linux killed Node during build. Re-check `/swapfile` configuration. |
 | **Disk space running low** | `df -h` | Clean npm cache: `npm cache clean --force` or remove old logs in `~/.pm2/logs/`. |
+

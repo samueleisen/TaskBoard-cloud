@@ -29,11 +29,11 @@ Instead of opening the GCP Browser SSH terminal and running `git pull`, `npm run
  │ Compute Engine VM: 34.57.62.124                        │
  │                                                        │
  │  Executes remote deployment script:                    │
- │  1. cd ~/TaskBoard-cloud                               │
+ │  1. cd ~/CloudZero                                     │
  │  2. git pull origin main                               │
  │  3. npm install                                        │
  │  4. npm run build                                      │
- │  5. pm2 restart taskboard                              │
+ │  5. pm2 restart cloudzero                              │
  │  6. curl -fail http://localhost:8080/health            │
  └────────────────────────────────────────────────────────┘
 ```
@@ -88,7 +88,7 @@ rm ~/deploy_key.pub
 
 ### Step 3: Add Repository Secrets in GitHub
 
-1. Open your repository on GitHub: `https://github.com/samueleisen/TaskBoard-cloud`
+1. Open your repository on GitHub: `https://github.com/syamilhi/TaskBoard-cloud`
 2. Navigate to: **Settings** ➔ **Secrets and variables** ➔ **Actions**.
 3. Click **New repository secret** and add these three secrets:
 
@@ -217,5 +217,5 @@ git commit -m "feat: updated hero section"
 git push origin main
 ```
 
-**That is all.** You do not need to open SSH, run `git pull`, or touch PM2 again. Within ~45 seconds, GitHub automatically updates the live website at `http://34.57.62.124:8080`.
+**That is all.** You do not need to open SSH, run `git pull`, or touch PM2 again. Within ~45 seconds, GitHub automatically updates the live website at `https://cloud.syamilhi.dev`.
 

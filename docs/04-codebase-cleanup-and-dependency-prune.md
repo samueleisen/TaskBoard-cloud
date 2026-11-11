@@ -81,3 +81,4 @@ Running `npm install` across the workspaces immediately uninstalled **38 package
 
 1. **Dead Code Costs Real Money & Memory**: Even if code isn't being called, if it is imported into a Node.js process, it consumes V8 heap memory, slows down startup, and increases bundle transfer times.
 2. **Aggressively Prune Native Packages**: Libraries like `pg` or `bcryptjs` carry heavy native compilation and memory footprints. Removing them when not strictly needed is the single highest-impact optimization on micro cloud instances.
+

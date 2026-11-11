@@ -97,3 +97,4 @@ Whenever launching a new project on Google Cloud, execute this checklist to prev
 ### 4. Billing Budget Alerts
 - [ ] Set up a GCP Budget alert starting at **$1.00 / Rp 15,000** with email notifications at 50%, 90%, and 100% of budget.
 - [ ] Catches any unintended billing creep within hours rather than at the end of the month.
+
