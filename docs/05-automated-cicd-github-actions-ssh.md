@@ -174,8 +174,8 @@ jobs:
             echo "🔨 [Deploy] Compiling client and server bundles..."
             npm run build
 
-            echo "🔄 [Deploy] Reloading PM2 process CloudZero..."
-            pm2 restart CloudZero
+            echo "🔄 [Deploy] Reloading PM2 process cloudzero..."
+            pm2 restart cloudzero || pm2 start server/dist/index.js --name cloudzero
 
             echo "🏥 [Deploy] Verifying health check probe..."
             sleep 2
