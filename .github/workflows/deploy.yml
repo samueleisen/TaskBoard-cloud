@@ -1,0 +1,48 @@
+name: Continuous Deployment (GCP VM)
+
+# Trigger deployment automatically on every push to main
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to GCP Compute Engine
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Repository Code
+        uses: actions/checkout@v4
+
+      - name: Execute Remote SSH Deployment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_PORT || 22 }}
+          script_stop: true
+          script: |
+            echo "🚀 [Deploy] Navigating to ~/CloudZero..."
+            cd ~/CloudZero
+
+            echo "📥 [Deploy] Pulling latest code from GitHub main..."
+            git pull origin main
+
+            echo "📦 [Deploy] Synchronizing npm dependencies..."
+            npm install
+
+            echo "🔨 [Deploy] Compiling client and server bundles..."
+            npm run build
+
+            echo "🔄 [Deploy] Reloading PM2 process CloudZero..."
+            pm2 restart CloudZero
+
+            echo "🏥 [Deploy] Verifying health check probe..."
+            sleep 2
+            curl -fail http://localhost:8080/health || { echo "❌ Health check failed!"; exit 1; }
+
+            echo "✅ [Deploy] Deployment completed successfully!"
+

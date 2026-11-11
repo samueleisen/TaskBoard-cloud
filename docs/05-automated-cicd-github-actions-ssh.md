@@ -163,7 +163,7 @@ jobs:
           script_stop: true # Stop execution immediately if any command fails
           script: |
             echo "🚀 [Deploy] Navigating to project directory..."
-            cd ~/TaskBoard-cloud
+            cd ~/CloudZero
 
             echo "📥 [Deploy] Pulling latest code from GitHub main..."
             git pull origin main
@@ -174,8 +174,8 @@ jobs:
             echo "🔨 [Deploy] Compiling client and server bundles..."
             npm run build
 
-            echo "🔄 [Deploy] Reloading PM2 process..."
-            pm2 restart taskboard
+            echo "🔄 [Deploy] Reloading PM2 process CloudZero..."
+            pm2 restart CloudZero
 
             echo "🏥 [Deploy] Verifying health check probe..."
             sleep 2
@@ -218,3 +218,4 @@ git push origin main
 ```
 
 **That is all.** You do not need to open SSH, run `git pull`, or touch PM2 again. Within ~45 seconds, GitHub automatically updates the live website at `http://34.57.62.124:8080`.
+

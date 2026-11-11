@@ -43,7 +43,7 @@ async function main() {
       res.send(`
         <!DOCTYPE html>
         <html>
-          <head><title>Cloud Hosted Website — API</title></head>
+          <head><title>Cloud Zero — API</title></head>
           <body style="font-family: system-ui, -apple-system, sans-serif; background: #fbfaf8; color: #18181b; padding: 48px; line-height: 1.6; max-width: 600px; margin: 0 auto;">
             <h1 style="color: #18181b; font-size: 1.5rem; font-weight: 700; margin-bottom: 8px;">Cloud Hosted Website</h1>
             <p style="color: #646360; margin-bottom: 24px;">Deployed live on Google Cloud Platform (e2-micro · us-central1)</p>
