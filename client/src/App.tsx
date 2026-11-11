@@ -326,7 +326,7 @@ export const App: React.FC = () => {
               <path d="M8 12 Q12 7 16 12 Q12 17 8 12Z" fill="white" opacity="0.9" />
             </svg>
           </span>
-          <span>Cloud Hosted Website</span>
+          <span>CloudZero</span>
         </div>
         <a
           className="topbar-gh"
@@ -347,15 +347,14 @@ export const App: React.FC = () => {
         <div className="hero-content">
           <div className="hero-eyebrow">
             <span className="hero-dot" />
-            Running live on Google Cloud Platform
+            Live Cloud Service · Google Cloud Platform
           </div>
           <h1 className="hero-title">
-            Cloud Hosted<br />
-            <span className="hero-title-accent">Website</span>
+            Cloud<span className="hero-title-accent">Zero</span>
           </h1>
           <p className="hero-sub">
-            A real, production-grade web app deployed on GCP —<br />
-            24 / 7 uptime, zero dollars, zero compromise.
+            A real, production-grade web app running 24/7 on GCP —<br />
+            optimized to zero waste.
           </p>
           <div className="hero-cta-row">
             <a className="btn-primary" href="mailto:syamilhedison@gmail.com">
