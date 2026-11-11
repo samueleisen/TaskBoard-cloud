@@ -1,19 +1,49 @@
 # Cloud Hosted Website — Architecture & Operations Playbook
 
 > **A production-grade, 24/7 web application running on Google Cloud Platform at $0.00 / month.**  
-> Engineered to demonstrate resilient cloud hosting, SRE telemetry, and FinOps discipline.
+> Engineered to demonstrate resilient cloud hosting, SRE telemetry, and FinOps discipline on a single Compute Engine instance.
 
 ---
 
-## 🧭 System Overview
+## 📚 Documentation Index
 
-**Cloud Hosted Website** is a single-page showcase application that couples a responsive React frontend with an Express backend running under PM2 on a Google Cloud Platform Compute Engine instance.
+This playbook is organized into four modular, practical guides:
 
-Instead of paying for managed databases, application load balancers, or over-provisioned container clusters, this project proves that a well-architected web service can run continuously with high availability, low latency, and zero monthly cloud expenditure.
+1. [**01. Journey & Architecture Decisions**](01-journey-and-architecture-decisions.md)
+   * The transformation from a Kanban app to a focused cloud showcase.
+   * Why we chose an `e2-micro` VM over Cloud Run + Cloud SQL.
+   * Decoupling real-time UX ticking (1s) from network telemetry (3s).
+   * Removing "Free Tier" language in favor of deliberate FinOps framing.
+   * Designing the 60 FPS "Signal Lens" GPU compositor hero animation.
+
+2. [**02. VM Operations & Commands Runbook**](02-vm-operations-and-commands.md)
+   * Initial GCP VM provisioning and firewall rule creation (`allow-port-8080`).
+   * System prep: Node.js 20 LTS, global PM2, and git setup.
+   * Allocating a 1 GB swapfile to guard against Linux Out-Of-Memory (OOM) crashes.
+   * The standard deployment loop (`git pull`, `npm install`, `npm run build`, `pm2 restart`).
+   * Diagnostic cheat sheet: PM2 logs, port checks, memory status.
+
+3. [**03. FinOps & Hidden Cost Post-Mortem**](03-finops-and-hidden-cost-postmortem.md)
+   * The story of the ~Rp 300 / day billing leak on an idle project.
+   * Root-cause breakdown: GCP's default multi-regional persistent disk snapshot trap.
+   * Step-by-step billing report forensic workflow (grouping by SKU).
+   * Reusable 5-point GCP cost governance checklist for future projects.
+
+4. [**04. Codebase Cleanup & Dependency Prune Audit**](04-codebase-cleanup-and-dependency-prune.md)
+   * Why PM2 showed 74.2% RAM utilization and how dead code was causing it.
+   * Complete inventory of the 3,185 deleted lines across 28 legacy files.
+   * Pruning 38 unused packages (`pg`, `bcryptjs`, `jsonwebtoken`, `zod`, `lucide-react`).
+   * Before vs. after benchmark: 5x faster builds and 60% memory reduction on the VM.
+
+5. [**05. Automated CI/CD via GitHub Actions & SSH**](05-automated-cicd-github-actions-ssh.md)
+   * Complete step-by-step setup to automate deployments on `git push origin main`.
+   * Generating and securing ed25519 deploy keys in GitHub Secrets.
+   * The `.github/workflows/deploy.yml` specification with SRE build-failure guardrails.
+   * Automated post-deployment health check verification.
 
 ---
 
-## 🏛️ Architecture & Traffic Flow
+## 🏛️ System Architecture Topology
 
 ```
                       END-TO-END DEPLOYMENT & RUNTIME FLOW
@@ -34,19 +64,13 @@ Instead of paying for managed databases, application load balancers, or over-pro
    │  │  • Systemd automatic crash/reboot recovery       │  │
    │  └──────────────────────────────────────────────────┘  │
    │                                                        │
-   │  GCP Firewall: allow-port-8080 (TCP Ingress)           │
+   │  GCP VPC Firewall: allow-port-8080 (TCP Ingress)       │
    │  1 GB Swap Space (swappiness=10)                       │
    └────────────────────────┬───────────────────────────────┘
                             │
                             ▼
-             [ Visitor Browser: 34.57.62.124:8080 ]
+              [ Visitor Browser: 34.57.62.124:8080 ]
 ```
-
-### Key Request Paths:
-1. `GET /` — Serves the pre-compiled React single-page application (`client/dist/index.html`).
-2. `GET /assets/*` — High-speed static bundle delivery directly by Express.
-3. `GET /health` — Real-time telemetry probe returning JSON status, process uptime, and node metadata.
-4. `GET *` (Fallback) — Client-side SPA routing fallback to `client/dist/index.html`.
 
 ---
 
@@ -55,124 +79,35 @@ Instead of paying for managed databases, application load balancers, or over-pro
 | Component | Specification | Cost & Efficiency |
 | :--- | :--- | :--- |
 | **Cloud Provider** | Google Cloud Platform (GCP) | $0.00/mo optimized footprint |
-| **Compute Instance** | `e2-micro` (1 shared vCPU, 1 GB RAM) | Lean shared compute core |
+| **Compute Instance** | `e2-micro` (1 shared vCPU, 1 GB RAM) | 1 free instance per month in US regions |
 | **Region / Zone** | `us-central1-a` (Iowa) | US Central zone |
 | **Operating System** | Ubuntu 24.04 LTS (x86_64) | Standard free open-source OS |
-| **Storage** | 10 GB Standard Persistent Disk | Compact storage footprint |
-| **Swapfile** | 1 GB swapfile (`/swapfile`, `swappiness=10`) | Local disk allocated, guards against OOM |
-| **Process Manager** | PM2 (`taskboard`) | Systemd daemonized auto-restart |
+| **Persistent Disk** | 10 GB Standard Persistent Disk | Compact storage footprint (30 GB limit) |
+| **Swap Space** | 1 GB swapfile (`/swapfile`, `swappiness=10`) | Prevents OOM crashes during builds |
+| **Process Manager** | PM2 (`taskboard`) | Systemd daemonized auto-recovery |
 | **Ingress Firewall** | VPC firewall rule: `allow-port-8080` (TCP `0.0.0.0/0`) | Direct VPC ingress |
 | **Monthly Cost** | **$0.00 / month** | $0.00 total monthly bill |
 
 ---
 
-## 📊 SRE Telemetry & Health Probe Contract
-
-The application implements a lightweight, zero-dependency health and monitoring endpoint at `/health`:
-
-### HTTP GET `/health`
-```json
-{
-  "status": "ok",
-  "service": "cloud-hosted-website",
-  "mode": "GCP Compute Engine (e2-micro · us-central1)",
-  "isPostgres": false,
-  "uptimeSeconds": 798740,
-  "timestamp": "2026-11-09T09:00:30.576Z",
-  "version": "1.0.0"
-}
-```
-
-### Client-Side Probe Integration:
-* **Active Latency Ping**: The client initiates an active round-trip ping every 3 seconds to measure real-time latency and sync uptime.
-* **Ticking Counter**: A local interval ticks second-by-second to display live, uninterrupted uptime in the sticky metric strip.
-* **Layout Shift Prevention**: Strict tabular numeric styling (`font-variant-numeric: tabular-nums`) prevents layout jitter during metric updates.
-
----
-
-## 🛠️ Local Development & Build Workflow
-
-The repository is structured as a clean npm workspace with decoupled client and server packages:
-
-```
-TaskBoard-cloud/
-├── client/           # React 18 + Vite + TypeScript frontend
-│   ├── src/
-│   │   ├── App.tsx          # Single-page showcase component
-│   │   ├── index.css        # Vanilla design tokens & animations
-│   │   ├── main.tsx         # Application entry point
-│   │   └── services/api.ts  # Telemetry client & HealthStatus contract
-│   └── vite.config.ts       # Dev server port 5173 + API proxy
-├── server/           # Express 4 + TypeScript backend
-│   ├── src/
-│   │   ├── config.ts        # Environment configuration
-│   │   └── index.ts         # Server, health probe, static asset delivery
-│   └── tsconfig.json
-├── docs/             # Architecture and operations documentation
-│   └── README.md
-├── .env.example      # Environment variable template
-├── package.json      # Workspace root configuration
-└── README.md         # Public project readme
-```
-
-### Development Commands
+## ⚡ Quick VM Operations Cheat Sheet
 
 ```bash
-# 1. Install all dependencies across workspaces
-npm install
-
-# 2. Run local development servers (Vite :5173 + Express :8080)
-npm run dev
-
-# 3. Production build (compiles client assets and server TypeScript)
-npm run build
-
-# 4. Start production server
-npm start
-```
-
----
-
-## 🚀 VM Setup & Operations Runbook
-
-### 1. Provisioning Swap Space (OOM Prevention)
-On a 1 GB RAM `e2-micro` instance, Node.js builds or memory spikes can trigger the Linux Out-Of-Memory (OOM) killer. Allocating a 1 GB swapfile ensures rock-solid stability:
-
-```bash
-sudo fallocate -l 1G /swapfile
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile
-echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-echo 'vm.swappiness=10' | sudo tee -a /etc/sysctl.conf
-sudo sysctl -p
-```
-
-### 2. PM2 Management Commands
-The server runs continuously under PM2 with systemd startup hooks:
-
-```bash
-# Check status and resource usage
-pm2 status
-
-# View live streaming application logs
-pm2 logs taskboard
-
-# Restart application
-pm2 restart taskboard
-
-# Reload application with zero downtime
-pm2 reload taskboard
-
-# Save current PM2 process list to systemd startup
-pm2 save
-```
-
-### 3. Deploying Code Updates on the VM
-```bash
+# 1. Connect to VM via SSH, then navigate to repo
 cd ~/TaskBoard-cloud
+
+# 2. Deploy latest code from GitHub
 git pull origin main
 npm install
 npm run build
 pm2 restart taskboard
+
+# 3. Verify health probe
+curl -s http://localhost:8080/health
+
+# 4. Check PM2 status & memory
+pm2 status
+
+# 5. View streaming logs
+pm2 logs taskboard --lines 50
 ```
