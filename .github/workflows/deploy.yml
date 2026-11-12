@@ -6,6 +6,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     name: Deploy to GCP Compute Engine
@@ -18,25 +21,25 @@ jobs:
 
       - name: Execute Remote SSH Deployment
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
           port: ${{ secrets.VM_PORT || 22 }}
+          envs: GITHUB_TOKEN
           script_stop: true
           script: |
             echo "🚀 [Deploy] Navigating to ~/CloudZero..."
             cd ~/CloudZero
 
-            CURRENT_ORIGIN=$(git remote get-url origin 2>/dev/null || echo "")
-            if [[ "$CURRENT_ORIGIN" == *"TaskBoard-cloud"* ]]; then
-              NEW_ORIGIN="${CURRENT_ORIGIN//TaskBoard-cloud/CloudZero}"
-              echo "🔄 [Deploy] Updating git remote to $NEW_ORIGIN..."
-              git remote set-url origin "$NEW_ORIGIN"
-            fi
+            echo "🔄 [Deploy] Reconciling git remote origin..."
+            git remote set-url origin https://github.com/syamilhi/CloudZero.git 2>/dev/null || true
 
-            echo "📥 [Deploy] Pulling latest code from GitHub main..."
-            git pull origin main
+            echo "📥 [Deploy] Fetching latest code with authenticated token..."
+            git fetch https://x-access-token:${GITHUB_TOKEN}@github.com/syamilhi/CloudZero.git main
+            git reset --hard FETCH_HEAD
 
             echo "📦 [Deploy] Synchronizing npm dependencies..."
             npm install
