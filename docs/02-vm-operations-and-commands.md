@@ -11,7 +11,7 @@ Create the Compute Engine instance via the GCP Console or Cloud Shell with these
 
 | Parameter | Recommended Value | Why |
 | :--- | :--- | :--- |
-| **Instance Name** | `taskboard-vm` (or `cloud-showcase-vm`) | Standard naming |
+| **Instance Name** | `cloudzero-vm` (or `taskboard-vm`) | Standard naming |
 | **Region & Zone** | `us-central1-a` (Iowa) | Eligible for GCP Always Free Tier |
 | **Machine Family** | General Purpose ➔ `E2` | Shared-core micro instance |
 | **Machine Type** | `e2-micro` (2 vCPU, 1 GB memory) | 100% free (1 instance/month) |
@@ -98,7 +98,7 @@ sudo npm install -g pm2
 ```bash
 # 1. Clone your GitHub repository into the home directory
 cd ~
-git clone https://github.com/syamilhi/TaskBoard-cloud.git CloudZero
+git clone https://github.com/syamilhi/CloudZero.git
 cd CloudZero
 
 # 2. Copy environment template

@@ -102,8 +102,8 @@ const STEPS = [
   {
     icon: '🐙',
     label: 'GitHub',
-    detail: 'syamilhi/TaskBoard-cloud',
-    link: 'https://github.com/syamilhi/TaskBoard-cloud',
+    detail: 'syamilhi/CloudZero',
+    link: 'https://github.com/syamilhi/CloudZero',
   },
   {
     icon: '☁️',
@@ -366,7 +366,7 @@ export const App: React.FC = () => {
             </a>
             <a
               className="btn-secondary"
-              href="https://github.com/syamilhi/TaskBoard-cloud"
+              href="https://github.com/syamilhi/CloudZero"
               target="_blank"
               rel="noopener noreferrer"
             >

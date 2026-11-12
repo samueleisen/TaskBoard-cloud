@@ -88,7 +88,7 @@ rm ~/deploy_key.pub
 
 ### Step 3: Add Repository Secrets in GitHub
 
-1. Open your repository on GitHub: `https://github.com/syamilhi/TaskBoard-cloud`
+1. Open your repository on GitHub: `https://github.com/syamilhi/CloudZero`
 2. Navigate to: **Settings** ➔ **Secrets and variables** ➔ **Actions**.
 3. Click **New repository secret** and add these three secrets:
 

@@ -28,6 +28,13 @@ jobs:
             echo "🚀 [Deploy] Navigating to ~/CloudZero..."
             cd ~/CloudZero
 
+            CURRENT_ORIGIN=$(git remote get-url origin 2>/dev/null || echo "")
+            if [[ "$CURRENT_ORIGIN" == *"TaskBoard-cloud"* ]]; then
+              NEW_ORIGIN="${CURRENT_ORIGIN//TaskBoard-cloud/CloudZero}"
+              echo "🔄 [Deploy] Updating git remote to $NEW_ORIGIN..."
+              git remote set-url origin "$NEW_ORIGIN"
+            fi
+
             echo "📥 [Deploy] Pulling latest code from GitHub main..."
             git pull origin main
 

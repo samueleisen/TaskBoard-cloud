@@ -16,7 +16,7 @@
 
 * **Live Website**: [https://cloud.syamilhi.dev](https://cloud.syamilhi.dev)
 * **Live SRE Health Probe**: [https://cloud.syamilhi.dev/health](https://cloud.syamilhi.dev/health)
-* **GitHub Repository**: [https://github.com/syamilhi/TaskBoard-cloud](https://github.com/syamilhi/TaskBoard-cloud)
+* **GitHub Repository**: [https://github.com/syamilhi/CloudZero](https://github.com/syamilhi/CloudZero)
 
 ---
 
@@ -96,8 +96,8 @@ This setup is architected for **$0.00 / month total running cost**:
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/syamilhi/TaskBoard-cloud.git
-cd TaskBoard-cloud
+git clone https://github.com/syamilhi/CloudZero.git
+cd CloudZero
 
 # 2. Install dependencies across client and server
 npm install
